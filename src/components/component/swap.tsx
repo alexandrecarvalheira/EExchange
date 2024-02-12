@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { TabsTrigger, TabsList, TabsContent, Tabs } from "@/components/ui/tabs";
 import { generatePermits, revokePermits } from "@/lib/permits";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { contractStore } from "@/store/contractStore";
@@ -66,7 +67,11 @@ export function Swap() {
 
   const FormSchema = z.object({
     address: z.string(),
-    amount: z.number().transform(async (amount) => {
+    amountIn: z.number().transform(async (amount) => {
+      console.log(amount);
+      return await fhenix?.encrypt_uint32(amount);
+    }),
+    amountOut: z.number().transform(async (amount) => {
       console.log(amount);
       return await fhenix?.encrypt_uint32(amount);
     }),
@@ -78,133 +83,269 @@ export function Swap() {
   });
 
   const onSubmit: SubmitHandler<FormInput> = async (data) => {
-    const { address, amount } = data;
+    const { address, amountIn } = data;
     const tx = await erc20!["transfer(address,(bytes))"](
       address,
-      amount as any
+      amountIn as any
     );
   };
   return (
-    <div
-      key="1"
-      className="flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900"
-    >
-      <div className="w-full max-w-md px-4 py-8 bg-white shadow-md rounded-lg dark:bg-gray-800">
-        <div className="flex justify-center">
-          <ConnectButton />{" "}
-          {!hasPermit ? (
-            <Button
-              className="ml-auto"
-              variant="outline"
-              onClick={async () => {
-                setFhenix(await generatePermits(contractAddress!, provider!));
-                setHasPermit(true);
-              }}
-            >
-              Generate Permits
-            </Button>
-          ) : (
-            <Button
-              className="ml-auto"
-              variant="outline"
-              onClick={async () => {
-                setFhenix(
-                  await revokePermits(contractAddress!, fhenix!, provider!)
-                );
-                setHasPermit(false);
-                setBalance("Encrypted");
-              }}
-            >
-              Remove Permits
-            </Button>
-          )}
-        </div>
-        <div className="text-center my-4">
-          <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200">
-            Token Name: {name}
-          </h3>
-          <p className="text-sm text-gray-700 dark:text-gray-200">
-            Symbol: {symbol}
-          </p>
-          <p className="text-sm text-gray-700 dark:text-gray-200">
-            Total Supply: {totalSupply}
-          </p>
-        </div>
-        <h2 className="text-3xl font-semibold text-center text-gray-800 dark:text-white">
-          Encrypted ERC20 Transfer
-        </h2>
-        <div className="mt-4 flex items-center justify-between">
-          <span className="border-b w-1/5 lg:w-1/4" />
-          <button
-            className="text-xs text-center text-gray-500 uppercase dark:text-gray-400 hover:underline"
-            onClick={async () => {
-              const tx = await erc20!.mint(1000);
-              tx.wait();
-              setTotalSupply(totalSupply + 1000);
-            }}
-          >
-            Mint Tokens
-          </button>
-          <span className="border-b w-1/5 lg:w-1/4" />
-        </div>
-        <form
-          className="mt-4"
-          onSubmit={handleSubmit(onSubmit)}
-          autoComplete="off"
-          id="form"
+    <Tabs className="w-full max-w-md " defaultValue="swap">
+      <TabsList className="flex">
+        <TabsTrigger
+          aria-selected="true"
+          className="flex-1 text-center py-2 cursor-pointer"
+          value="swap"
         >
-          <div className="flex flex-col mb-2">
-            <Label htmlFor="address">Address</Label>
-            <Input
-              id="address"
-              placeholder="Enter recipient's wallet address"
-              type="text"
-              {...register("address", {
-                required: true,
-              })}
-            />
-            <Label htmlFor="amount">amount</Label>
-            <Input
-              id="amount"
-              placeholder="Enter amount to transfer"
-              type="number"
-              {...register("amount", {
-                valueAsNumber: true,
-                required: true,
-              })}
-            />
-          </div>
-          <div className="flex items-center justify-between mt-4">
-            <Button
-              className="w-full"
-              variant="outline"
-              type="submit"
-              form="form"
-              disabled={!hasPermit}
-            >
-              Transfer
-            </Button>
-          </div>
-        </form>
-        <div className="mt-8">
-          <h3 className="text-xs font-semibold text-gray-600 uppercase dark:text-gray-400">
-            Token Balance
-          </h3>
-          <div className="flex items-center mt-2">
-            <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200">
-              {balance}
+          Swap
+        </TabsTrigger>
+        <TabsTrigger
+          aria-selected="false"
+          className="flex-1 text-center py-2 cursor-pointer"
+          value="liquidity"
+        >
+          Add Liquidity
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="swap">
+        <div
+          key="1"
+          className="flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-900"
+        >
+          <div className="w-full max-w-md px-4 py-8 bg-white shadow-md rounded-lg dark:bg-gray-800">
+            <div className="flex justify-center">
+              <ConnectButton />{" "}
+              {!hasPermit ? (
+                <Button
+                  className="ml-auto"
+                  variant="outline"
+                  onClick={async () => {
+                    setFhenix(
+                      await generatePermits(contractAddress!, provider!)
+                    );
+                    setHasPermit(true);
+                  }}
+                >
+                  Generate Permits
+                </Button>
+              ) : (
+                <Button
+                  className="ml-auto"
+                  variant="outline"
+                  onClick={async () => {
+                    setFhenix(
+                      await revokePermits(contractAddress!, fhenix!, provider!)
+                    );
+                    setHasPermit(false);
+                    setBalance("Encrypted");
+                  }}
+                >
+                  Remove Permits
+                </Button>
+              )}
+            </div>
+            <div className="text-center my-4 flex gap-4 align-middle justify-center">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200">
+                  Token Name: {name}
+                </h3>
+                <p className="text-sm text-gray-700 dark:text-gray-200">
+                  Symbol: {symbol}
+                </p>
+                <p className="text-sm text-gray-700 dark:text-gray-200">
+                  Total Supply: {totalSupply}
+                </p>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200">
+                  Token Name: {name}
+                </h3>
+                <p className="text-sm text-gray-700 dark:text-gray-200">
+                  Symbol: {symbol}
+                </p>
+                <p className="text-sm text-gray-700 dark:text-gray-200">
+                  Total Supply: {totalSupply}
+                </p>
+              </div>
+            </div>
+            <h2 className="text-3xl font-semibold text-center text-gray-800 dark:text-white">
+              Encrypted Exchange
             </h2>
-            <Button
-              disabled={!hasPermit}
-              className="ml-auto"
-              variant="outline"
-              onClick={getEncryptedBalance}
+            <div className="mt-4 flex items-center justify-between">
+              <span className="border-b w-1/5 lg:w-1/4" />
+              <button
+                className="text-xs text-center text-gray-500 uppercase dark:text-gray-400 hover:underline"
+                onClick={async () => {
+                  const tx = await erc20!.mint(1000);
+                  tx.wait();
+                  setTotalSupply(totalSupply + 1000);
+                }}
+              >
+                Mint Tokens
+              </button>
+              <span className="border-b w-1/5 lg:w-1/4" />
+            </div>
+            <form
+              className="mt-4"
+              onSubmit={handleSubmit(onSubmit)}
+              autoComplete="off"
+              id="form"
             >
-              decrypt
-            </Button>
+              <div className="flex flex-col mb-2 ">
+                <div className="flex  items-center justify-between">
+                  <Label className="text-center" htmlFor="addressIn">
+                    {name}
+                  </Label>
+                  <p>
+                    Balance:{" "}
+                    {balance == "Encrypted" ? (
+                      <Button
+                        disabled={!hasPermit}
+                        className="ml-auto"
+                        variant="outline"
+                        onClick={getEncryptedBalance}
+                      >
+                        decrypt
+                      </Button>
+                    ) : (
+                      balance
+                    )}
+                  </p>
+                </div>
+
+                <Input
+                  id="amount"
+                  placeholder="0.0"
+                  type="number"
+                  {...register("amountIn", {
+                    valueAsNumber: true,
+                    required: true,
+                  })}
+                />
+                <div className=" flex justify-center items-center">
+                  <Button className=" w-fit my-10 text-center">switch</Button>
+                </div>
+                <div className="  mb-3 flex  items-center justify-between">
+                  <Label className="text-center">{name}</Label>
+                </div>
+                <Input
+                  id="amount"
+                  placeholder="0.0"
+                  type="number"
+                  {...register("amountOut", {
+                    valueAsNumber: true,
+                    required: true,
+                  })}
+                />
+              </div>
+              <div className="flex items-center justify-between mt-4">
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  type="submit"
+                  form="form"
+                  disabled={!hasPermit}
+                >
+                  Swap
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
-      </div>
-    </div>
+      </TabsContent>
+      <TabsContent value="liquidity">
+        <div className="flex flex-col items-center justify-center bg-white shadow-md rounded-lg dark:bg-gray-800">
+          <div className="flex justify-center">
+            <ConnectButton />{" "}
+            {!hasPermit ? (
+              <Button
+                className="ml-auto"
+                variant="outline"
+                onClick={async () => {
+                  setFhenix(await generatePermits(contractAddress!, provider!));
+                  setHasPermit(true);
+                }}
+              >
+                Generate Permits
+              </Button>
+            ) : (
+              <Button
+                className="ml-auto"
+                variant="outline"
+                onClick={async () => {
+                  setFhenix(
+                    await revokePermits(contractAddress!, fhenix!, provider!)
+                  );
+                  setHasPermit(false);
+                  setBalance("Encrypted");
+                }}
+              >
+                Remove Permits
+              </Button>
+            )}
+          </div>
+          <div className="text-center my-4 flex gap-4 align-middle justify-center">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200">
+                Token Name: {name}
+              </h3>
+              <p className="text-sm text-gray-700 dark:text-gray-200">
+                Symbol: {symbol}
+              </p>
+              <p className="text-sm text-gray-700 dark:text-gray-200">
+                Total Supply: {totalSupply}
+              </p>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200">
+                Token Name: {name}
+              </h3>
+              <p className="text-sm text-gray-700 dark:text-gray-200">
+                Symbol: {symbol}
+              </p>
+              <p className="text-sm text-gray-700 dark:text-gray-200">
+                Total Supply: {totalSupply}
+              </p>
+            </div>
+          </div>
+          <h2 className="text-3xl font-semibold text-center text-gray-800 dark:text-white">
+            Encrypted Exchange
+          </h2>
+          <div className="w-full max-w-md px-4 py-8 bg-white shadow-md rounded-lg dark:bg-gray-800">
+            <form className="mt-4">
+              <div className="flex flex-col mb-2">
+                <Label htmlFor="token1">{name}</Label>
+              </div>
+              <div className="flex flex-col mb-2">
+                <Label htmlFor="amount1">Amount 1</Label>
+                <Input
+                  id="amount1"
+                  placeholder="Enter Amount 1"
+                  required
+                  type="number"
+                />
+              </div>
+              <div className="flex flex-col mb-2">
+                <Label htmlFor="token2">{name}</Label>
+              </div>
+              <div className="flex flex-col mb-2">
+                <Label htmlFor="amount2">Amount 2</Label>
+                <Input
+                  id="amount2"
+                  placeholder="Enter Amount 2"
+                  required
+                  type="number"
+                />
+              </div>
+              <div className="flex items-center justify-between mt-4">
+                <Button className="w-full" variant="outline">
+                  Add Liquidity
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </TabsContent>
+    </Tabs>
   );
 }
