@@ -1,4 +1,3 @@
-"use client";
 import { Swap } from "@/components/component/swap";
 import Image from "next/image";
 
