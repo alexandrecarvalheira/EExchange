@@ -2,6 +2,7 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 
 ## Getting Started
 
+npx typechain --target ethers-v6 --out-dir src/types './src/lib/EExchange.json'
 First, run the development server:
 
 ```bash

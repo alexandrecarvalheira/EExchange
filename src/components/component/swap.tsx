@@ -17,6 +17,7 @@ import { PermissionStruct } from "@/types/EncryptedERC20_ABI";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { AddLiquidity } from "./addLiquidity";
 
 declare global {
   interface Window {
@@ -27,7 +28,9 @@ declare global {
 export function Swap() {
   //Zustand Store
   const contractAddress = contractStore((state) => state.contractAddress);
-  const erc20 = contractStore((state) => state.erc20);
+  const eexchange = contractStore((state) => state.eexchange);
+  const token1 = contractStore((state) => state.token1);
+  const token2 = contractStore((state) => state.token2);
   const fhenix = instanceStore((state) => state.fhenix);
   const setFhenix = instanceStore((state) => state.setFhenix);
   const provider = instanceStore((state) => state.provider);
@@ -38,42 +41,64 @@ export function Swap() {
   //State
   const [balance, setBalance] = useState<string>("Encrypted");
   const [hasPermit, setHasPermit] = useState<boolean>(false);
-  const [name, setName] = useState<string>("Encrypted");
-  const [symbol, setSymbol] = useState<string>("ENC");
-  const [totalSupply, setTotalSupply] = useState<number>(0);
+  const [allowed, setAllowed] = useState<boolean>(false);
+  const [change, setChange] = useState<boolean>(false);
+  const [tokenOne, setTokenOne] = useState<{
+    name?: string;
+    symbol?: string;
+    totalSupply?: number;
+  }>({});
+  const [tokenTwo, setTokenTwo] = useState<{
+    name?: string;
+    symbol?: string;
+    totalSupply?: number;
+  }>({});
 
   useEffect(() => {
     const getTokenData = async () => {
-      const name = await erc20?.name();
-      setName(name!);
-      const symbol = await erc20?.symbol();
-      setSymbol(symbol!);
-      const totalSupply = await erc20?.totalSupply();
-      setTotalSupply(Number(totalSupply!));
+      const name1 = await token1.contract!.name();
+      const symbol1 = await token1.contract!.symbol();
+      const totalSupply1 = await token1.contract!.totalSupply();
+      setTokenOne({
+        name: name1,
+        symbol: symbol1,
+        totalSupply: Number(totalSupply1!),
+      });
+      const name = await token2.contract!.name();
+      const symbol = await token2.contract!.symbol();
+      const totalSupply = await token2.contract!.totalSupply();
+      setTokenTwo({ name, symbol, totalSupply: Number(totalSupply!) });
     };
     getTokenData();
-  }, [erc20]);
+  }, [token1, token2]);
 
   const getEncryptedBalance = async () => {
-    const permit = fhenix!.exportPermits()[contractAddress!];
+    const address = change ? token2.address : token1.address;
+    const permit = fhenix!.exportPermits()[address!];
     const permission: PermissionStruct = fhenix!.extractPermitPermission(
       permit!
     );
+    console.log(permit);
 
-    const EncryptedBalance = await erc20!.balanceOf(address!, permission);
-    const DecryptedBalance = fhenix!.unseal(contractAddress!, EncryptedBalance);
-    setBalance(String(DecryptedBalance));
+    if (address == token1.address) {
+      const EncryptedBalance = await token1.contract![
+        "balanceOf((bytes32,bytes))"
+      ](permission);
+      const DecryptedBalance = fhenix!.unseal(address!, EncryptedBalance);
+      setBalance(String(DecryptedBalance));
+    } else {
+      const EncryptedBalance = await token2.contract![
+        "balanceOf((bytes32,bytes))"
+      ](permission);
+      const DecryptedBalance = fhenix!.unseal(address!, EncryptedBalance);
+      setBalance(String(DecryptedBalance));
+    }
   };
 
   const FormSchema = z.object({
-    address: z.string(),
     amountIn: z.number().transform(async (amount) => {
       console.log(amount);
-      return await fhenix?.encrypt_uint32(amount);
-    }),
-    amountOut: z.number().transform(async (amount) => {
-      console.log(amount);
-      return await fhenix?.encrypt_uint32(amount);
+      return await fhenix?.encrypt_uint8(amount);
     }),
   });
   type FormInput = z.infer<typeof FormSchema>;
@@ -82,12 +107,33 @@ export function Swap() {
     resolver: zodResolver(FormSchema),
   });
 
-  const onSubmit: SubmitHandler<FormInput> = async (data) => {
-    const { address, amountIn } = data;
-    const tx = await erc20!["transfer(address,(bytes))"](
-      address,
-      amountIn as any
-    );
+  const onSubmitSwap: SubmitHandler<FormInput> = async (data) => {
+    console.log("re");
+    const address = change ? token2.address : token1.address;
+    console.log(address);
+    const { amountIn } = data;
+    console.log(amountIn);
+    const tx = await eexchange!.swap(address!, amountIn as any);
+    tx.wait();
+  };
+  const onSubmitAllow: SubmitHandler<FormInput> = async (data) => {
+    const address = change ? token2.address : token1.address;
+    console.log(data);
+    const { amountIn } = data;
+    if (address == token1.address) {
+      const tx1 = await token1.contract!["approve(address,(bytes))"](
+        contractAddress!,
+        amountIn as any
+      );
+      tx1.wait();
+    } else {
+      const tx1 = await token2.contract!["approve(address,(bytes))"](
+        contractAddress!,
+        amountIn as any
+      );
+      tx1.wait();
+    }
+    setAllowed(true);
   };
   return (
     <Tabs className="w-full max-w-md " defaultValue="swap">
@@ -120,9 +166,8 @@ export function Swap() {
                   className="ml-auto"
                   variant="outline"
                   onClick={async () => {
-                    setFhenix(
-                      await generatePermits(contractAddress!, provider!)
-                    );
+                    const address = change ? token2.address : token1.address;
+                    setFhenix(await generatePermits(address!, provider!));
                     setHasPermit(true);
                   }}
                 >
@@ -133,8 +178,10 @@ export function Swap() {
                   className="ml-auto"
                   variant="outline"
                   onClick={async () => {
+                    const address = change ? token2.address : token1.address;
+
                     setFhenix(
-                      await revokePermits(contractAddress!, fhenix!, provider!)
+                      await revokePermits(address!, fhenix!, provider!)
                     );
                     setHasPermit(false);
                     setBalance("Encrypted");
@@ -147,54 +194,65 @@ export function Swap() {
             <div className="text-center my-4 flex gap-4 align-middle justify-center">
               <div>
                 <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200">
-                  Token Name: {name}
+                  Token Name: {tokenOne.name}
                 </h3>
                 <p className="text-sm text-gray-700 dark:text-gray-200">
-                  Symbol: {symbol}
+                  Symbol: {tokenOne.symbol}
                 </p>
                 <p className="text-sm text-gray-700 dark:text-gray-200">
-                  Total Supply: {totalSupply}
+                  Total Supply: {tokenOne.totalSupply}
                 </p>
+                <span className="border-b w-1/5 lg:w-1/4" />
+                <button
+                  className="text-xs text-center text-gray-500 uppercase dark:text-gray-400 hover:underline"
+                  onClick={async () => {
+                    const tx = await token1.contract!.mint(100);
+                    tx.wait();
+                    setTokenOne({ totalSupply: tokenOne.totalSupply! + 100 });
+                  }}
+                >
+                  Mint Tokens
+                </button>
+                <span className="border-b w-1/5 lg:w-1/4" />
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200">
-                  Token Name: {name}
+                  Token Name: {tokenTwo.name}
                 </h3>
                 <p className="text-sm text-gray-700 dark:text-gray-200">
-                  Symbol: {symbol}
+                  Symbol: {tokenTwo.symbol}
                 </p>
                 <p className="text-sm text-gray-700 dark:text-gray-200">
-                  Total Supply: {totalSupply}
+                  Total Supply: {tokenTwo.totalSupply}
                 </p>
+                <span className="border-b w-1/5 lg:w-1/4" />
+                <button
+                  className="text-xs text-center text-gray-500 uppercase dark:text-gray-400 hover:underline"
+                  onClick={async () => {
+                    const tx = await token2.contract!.mint(100);
+                    tx.wait();
+                    setTokenTwo({ totalSupply: tokenTwo.totalSupply! + 100 });
+                  }}
+                >
+                  Mint Tokens
+                </button>
+                <span className="border-b w-1/5 lg:w-1/4" />
               </div>
             </div>
             <h2 className="text-3xl font-semibold text-center text-gray-800 dark:text-white">
               Encrypted Exchange
             </h2>
-            <div className="mt-4 flex items-center justify-between">
-              <span className="border-b w-1/5 lg:w-1/4" />
-              <button
-                className="text-xs text-center text-gray-500 uppercase dark:text-gray-400 hover:underline"
-                onClick={async () => {
-                  const tx = await erc20!.mint(1000);
-                  tx.wait();
-                  setTotalSupply(totalSupply + 1000);
-                }}
-              >
-                Mint Tokens
-              </button>
-              <span className="border-b w-1/5 lg:w-1/4" />
-            </div>
+
             <form
               className="mt-4"
-              onSubmit={handleSubmit(onSubmit)}
+              onSubmit={handleSubmit(onSubmitSwap)}
               autoComplete="off"
               id="form"
             >
               <div className="flex flex-col mb-2 ">
                 <div className="flex  items-center justify-between">
                   <Label className="text-center" htmlFor="addressIn">
-                    {name}
+                    {change ? tokenTwo.name : tokenOne.name}
                   </Label>
                   <p>
                     Balance:{" "}
@@ -223,129 +281,52 @@ export function Swap() {
                   })}
                 />
                 <div className=" flex justify-center items-center">
-                  <Button className=" w-fit my-10 text-center">switch</Button>
+                  <Button
+                    className=" w-fit my-10 text-center"
+                    onClick={() => {
+                      setChange(!change);
+                      setHasPermit(false);
+                      setBalance("Encrypted");
+                    }}
+                    disabled={!hasPermit}
+                  >
+                    switch
+                  </Button>
                 </div>
                 <div className="  mb-3 flex  items-center justify-between">
-                  <Label className="text-center">{name}</Label>
+                  <Label className="text-center">
+                    {change ? tokenOne.name : tokenTwo.name}
+                  </Label>
                 </div>
-                <Input
-                  id="amount"
-                  placeholder="0.0"
-                  type="number"
-                  {...register("amountOut", {
-                    valueAsNumber: true,
-                    required: true,
-                  })}
-                />
+                <Input id="amount" placeholder="0.0" type="number" />
               </div>
               <div className="flex items-center justify-between mt-4">
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  type="submit"
-                  form="form"
-                  disabled={!hasPermit}
-                >
-                  Swap
-                </Button>
+                {allowed ? (
+                  <Button
+                    className="w-full"
+                    variant="outline"
+                    type="submit"
+                    form="form"
+                    disabled={!hasPermit}
+                  >
+                    Swap
+                  </Button>
+                ) : (
+                  <Button
+                    className="w-full"
+                    variant="outline"
+                    onClick={handleSubmit(onSubmitAllow)}
+                    disabled={!hasPermit}
+                  >
+                    Allow Token
+                  </Button>
+                )}
               </div>
             </form>
           </div>
         </div>
       </TabsContent>
-      <TabsContent value="liquidity">
-        <div className="flex flex-col items-center justify-center bg-white shadow-md rounded-lg dark:bg-gray-800">
-          <div className="flex justify-center">
-            <ConnectButton />{" "}
-            {!hasPermit ? (
-              <Button
-                className="ml-auto"
-                variant="outline"
-                onClick={async () => {
-                  setFhenix(await generatePermits(contractAddress!, provider!));
-                  setHasPermit(true);
-                }}
-              >
-                Generate Permits
-              </Button>
-            ) : (
-              <Button
-                className="ml-auto"
-                variant="outline"
-                onClick={async () => {
-                  setFhenix(
-                    await revokePermits(contractAddress!, fhenix!, provider!)
-                  );
-                  setHasPermit(false);
-                  setBalance("Encrypted");
-                }}
-              >
-                Remove Permits
-              </Button>
-            )}
-          </div>
-          <div className="text-center my-4 flex gap-4 align-middle justify-center">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200">
-                Token Name: {name}
-              </h3>
-              <p className="text-sm text-gray-700 dark:text-gray-200">
-                Symbol: {symbol}
-              </p>
-              <p className="text-sm text-gray-700 dark:text-gray-200">
-                Total Supply: {totalSupply}
-              </p>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200">
-                Token Name: {name}
-              </h3>
-              <p className="text-sm text-gray-700 dark:text-gray-200">
-                Symbol: {symbol}
-              </p>
-              <p className="text-sm text-gray-700 dark:text-gray-200">
-                Total Supply: {totalSupply}
-              </p>
-            </div>
-          </div>
-          <h2 className="text-3xl font-semibold text-center text-gray-800 dark:text-white">
-            Encrypted Exchange
-          </h2>
-          <div className="w-full max-w-md px-4 py-8 bg-white shadow-md rounded-lg dark:bg-gray-800">
-            <form className="mt-4">
-              <div className="flex flex-col mb-2">
-                <Label htmlFor="token1">{name}</Label>
-              </div>
-              <div className="flex flex-col mb-2">
-                <Label htmlFor="amount1">Amount 1</Label>
-                <Input
-                  id="amount1"
-                  placeholder="Enter Amount 1"
-                  required
-                  type="number"
-                />
-              </div>
-              <div className="flex flex-col mb-2">
-                <Label htmlFor="token2">{name}</Label>
-              </div>
-              <div className="flex flex-col mb-2">
-                <Label htmlFor="amount2">Amount 2</Label>
-                <Input
-                  id="amount2"
-                  placeholder="Enter Amount 2"
-                  required
-                  type="number"
-                />
-              </div>
-              <div className="flex items-center justify-between mt-4">
-                <Button className="w-full" variant="outline">
-                  Add Liquidity
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </TabsContent>
+      <AddLiquidity />
     </Tabs>
   );
 }
