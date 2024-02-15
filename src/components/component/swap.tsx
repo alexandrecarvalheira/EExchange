@@ -206,9 +206,9 @@ export function Swap() {
                 <button
                   className="text-xs text-center text-gray-500 uppercase dark:text-gray-400 hover:underline"
                   onClick={async () => {
-                    const tx = await token1.contract!.mint(100);
+                    const tx = await token1.contract!.mint(10);
                     tx.wait();
-                    setTokenOne({ totalSupply: tokenOne.totalSupply! + 100 });
+                    setTokenOne({ totalSupply: tokenOne.totalSupply! + 10 });
                   }}
                 >
                   Mint Tokens
@@ -229,9 +229,9 @@ export function Swap() {
                 <button
                   className="text-xs text-center text-gray-500 uppercase dark:text-gray-400 hover:underline"
                   onClick={async () => {
-                    const tx = await token2.contract!.mint(100);
+                    const tx = await token2.contract!.mint(10);
                     tx.wait();
-                    setTokenTwo({ totalSupply: tokenTwo.totalSupply! + 100 });
+                    setTokenTwo({ totalSupply: tokenTwo.totalSupply! + 10 });
                   }}
                 >
                   Mint Tokens
