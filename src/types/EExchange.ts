@@ -22,9 +22,9 @@ import type {
   TypedContractMethod,
 } from "./common";
 
-export type InEuint8Struct = { data: BytesLike };
+export type InEuint16Struct = { data: BytesLike };
 
-export type InEuint8StructOutput = [data: string] & { data: string };
+export type InEuint16StructOutput = [data: string] & { data: string };
 
 export type PermissionStruct = { publicKey: BytesLike; signature: BytesLike };
 
@@ -38,30 +38,22 @@ export interface EExchangeInterface extends Interface {
     nameOrSignature:
       | "addLiquidity"
       | "balanceOf"
-      | "balances"
       | "eip712Domain"
       | "getTotalSupply"
       | "removeLiquidity"
-      | "reserve0"
-      | "reserve1"
       | "swap"
       | "token0"
       | "token1"
-      | "totalSupply"
   ): FunctionFragment;
 
   getEvent(nameOrSignatureOrTopic: "EIP712DomainChanged"): EventFragment;
 
   encodeFunctionData(
     functionFragment: "addLiquidity",
-    values: [InEuint8Struct, InEuint8Struct]
+    values: [InEuint16Struct, InEuint16Struct]
   ): string;
   encodeFunctionData(
     functionFragment: "balanceOf",
-    values: [AddressLike]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "balances",
     values: [PermissionStruct]
   ): string;
   encodeFunctionData(
@@ -74,27 +66,20 @@ export interface EExchangeInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "removeLiquidity",
-    values: [InEuint8Struct]
+    values: [InEuint16Struct]
   ): string;
-  encodeFunctionData(functionFragment: "reserve0", values?: undefined): string;
-  encodeFunctionData(functionFragment: "reserve1", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "swap",
-    values: [AddressLike, InEuint8Struct]
+    values: [AddressLike, InEuint16Struct]
   ): string;
   encodeFunctionData(functionFragment: "token0", values?: undefined): string;
   encodeFunctionData(functionFragment: "token1", values?: undefined): string;
-  encodeFunctionData(
-    functionFragment: "totalSupply",
-    values?: undefined
-  ): string;
 
   decodeFunctionResult(
     functionFragment: "addLiquidity",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "balanceOf", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "balances", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "eip712Domain",
     data: BytesLike
@@ -107,15 +92,9 @@ export interface EExchangeInterface extends Interface {
     functionFragment: "removeLiquidity",
     data: BytesLike
   ): Result;
-  decodeFunctionResult(functionFragment: "reserve0", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "reserve1", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "swap", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "token0", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "token1", data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: "totalSupply",
-    data: BytesLike
-  ): Result;
 }
 
 export namespace EIP712DomainChangedEvent {
@@ -172,14 +151,12 @@ export interface EExchange extends BaseContract {
   ): Promise<this>;
 
   addLiquidity: TypedContractMethod<
-    [_amount0: InEuint8Struct, _amount1: InEuint8Struct],
+    [_amount0: InEuint16Struct, _amount1: InEuint16Struct],
     [bigint],
     "nonpayable"
   >;
 
-  balanceOf: TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
-
-  balances: TypedContractMethod<
+  balanceOf: TypedContractMethod<
     [permission: PermissionStruct],
     [string],
     "view"
@@ -204,17 +181,13 @@ export interface EExchange extends BaseContract {
   getTotalSupply: TypedContractMethod<[], [bigint], "view">;
 
   removeLiquidity: TypedContractMethod<
-    [_shares: InEuint8Struct],
+    [_shares: InEuint16Struct],
     [[bigint, bigint] & { amount0: bigint; amount1: bigint }],
     "nonpayable"
   >;
 
-  reserve0: TypedContractMethod<[], [bigint], "view">;
-
-  reserve1: TypedContractMethod<[], [bigint], "view">;
-
   swap: TypedContractMethod<
-    [_tokenIn: AddressLike, _amountIn: InEuint8Struct],
+    [_tokenIn: AddressLike, _amountIn: InEuint16Struct],
     [bigint],
     "nonpayable"
   >;
@@ -223,8 +196,6 @@ export interface EExchange extends BaseContract {
 
   token1: TypedContractMethod<[], [string], "view">;
 
-  totalSupply: TypedContractMethod<[], [bigint], "view">;
-
   getFunction<T extends ContractMethod = ContractMethod>(
     key: string | FunctionFragment
   ): T;
@@ -232,15 +203,12 @@ export interface EExchange extends BaseContract {
   getFunction(
     nameOrSignature: "addLiquidity"
   ): TypedContractMethod<
-    [_amount0: InEuint8Struct, _amount1: InEuint8Struct],
+    [_amount0: InEuint16Struct, _amount1: InEuint16Struct],
     [bigint],
     "nonpayable"
   >;
   getFunction(
     nameOrSignature: "balanceOf"
-  ): TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "balances"
   ): TypedContractMethod<[permission: PermissionStruct], [string], "view">;
   getFunction(
     nameOrSignature: "eip712Domain"
@@ -265,20 +233,14 @@ export interface EExchange extends BaseContract {
   getFunction(
     nameOrSignature: "removeLiquidity"
   ): TypedContractMethod<
-    [_shares: InEuint8Struct],
+    [_shares: InEuint16Struct],
     [[bigint, bigint] & { amount0: bigint; amount1: bigint }],
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "reserve0"
-  ): TypedContractMethod<[], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "reserve1"
-  ): TypedContractMethod<[], [bigint], "view">;
-  getFunction(
     nameOrSignature: "swap"
   ): TypedContractMethod<
-    [_tokenIn: AddressLike, _amountIn: InEuint8Struct],
+    [_tokenIn: AddressLike, _amountIn: InEuint16Struct],
     [bigint],
     "nonpayable"
   >;
@@ -288,9 +250,6 @@ export interface EExchange extends BaseContract {
   getFunction(
     nameOrSignature: "token1"
   ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "totalSupply"
-  ): TypedContractMethod<[], [bigint], "view">;
 
   getEvent(
     key: "EIP712DomainChanged"
