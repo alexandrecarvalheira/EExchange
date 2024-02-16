@@ -98,7 +98,7 @@ export function Swap() {
   const FormSchema = z.object({
     amountIn: z.number().transform(async (amount) => {
       console.log(amount);
-      return await fhenix?.encrypt_uint8(amount);
+      return await fhenix?.encrypt_uint16(amount);
     }),
   });
   type FormInput = z.infer<typeof FormSchema>;
@@ -206,9 +206,9 @@ export function Swap() {
                 <button
                   className="text-xs text-center text-gray-500 uppercase dark:text-gray-400 hover:underline"
                   onClick={async () => {
-                    const tx = await token1.contract!.mint(10);
+                    const tx = await token1.contract!.mint(100);
                     tx.wait();
-                    setTokenOne({ totalSupply: tokenOne.totalSupply! + 10 });
+                    setTokenOne({ totalSupply: tokenOne.totalSupply! + 100 });
                   }}
                 >
                   Mint Tokens
@@ -229,9 +229,9 @@ export function Swap() {
                 <button
                   className="text-xs text-center text-gray-500 uppercase dark:text-gray-400 hover:underline"
                   onClick={async () => {
-                    const tx = await token2.contract!.mint(10);
+                    const tx = await token2.contract!.mint(100);
                     tx.wait();
-                    setTokenTwo({ totalSupply: tokenTwo.totalSupply! + 10 });
+                    setTokenTwo({ totalSupply: tokenTwo.totalSupply! + 100 });
                   }}
                 >
                   Mint Tokens
